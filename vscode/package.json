@@ -1,0 +1,33 @@
+{
+  "name": "ruby-lsp-slim",
+  "displayName": "Ruby LSP Slim",
+  "description": "Slim template language and grammar for VS Code, the editor half of the ruby-lsp-slim gem.",
+  "version": "0.1.0",
+  "publisher": "ruby-lsp-slim",
+  "license": "MIT",
+  "repository": { "type": "git", "url": "https://github.com/InfiniteLoopEnjoyer/ruby-lsp-slim" },
+  "engines": { "vscode": "^1.80.0" },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "slim",
+        "aliases": ["Slim", "slim"],
+        "extensions": [".slim", ".skim"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "slim",
+        "scopeName": "text.slim",
+        "path": "./syntaxes/slim.tmLanguage",
+        "embeddedLanguages": {
+          "source.ruby": "ruby",
+          "source.ruby.embedded.slim": "ruby",
+          "text.html.basic": "html"
+        }
+      }
+    ]
+  }
+}
