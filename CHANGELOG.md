@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Form builders: a receiver named `f`, `form`, `builder`, `fields` or `*_form`/`*_builder`/`*_fields` in a template
+  is a guessed `ActionView::Helpers::FormBuilder` (`SimpleForm::FormBuilder` when indexed), so its methods hover,
+  complete and resolve.
 - The add-on registers Slim documents with the editor itself (`client/registerCapability` for text synchronisation
   and every feature the Ruby LSP offers ERB), so the stock Ruby LSP extension sends `.slim` files to the server with no
   `files.associations` entry and no client patch. A `slim` language id is picked up when present; otherwise the path

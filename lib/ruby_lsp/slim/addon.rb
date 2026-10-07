@@ -7,6 +7,7 @@ require_relative "document"
 require_relative "hover"
 require_relative "completion"
 require_relative "editor_registration"
+require_relative "template_receiver"
 
 module RubyLsp
   module Slim
@@ -23,18 +24,25 @@ module RubyLsp
 
     Store.prepend(StoreExtension)
 
-    # The hover request hands add-ons a node context but not the document, so the document is kept for the add-on's
-    # listener while the request is being built (add-on listeners are created inside this constructor).
-    module HoverRequestExtension
+    # The requests that infer receiver types hand neither add-on listeners nor the type inferrer the document they
+    # serve, so the document in flight is kept for them from the request's construction (where add-on listeners are
+    # created) to the end of its run.
+    module RequestDocumentExtension
       def initialize(document, *)
-        Thread.current[:ruby_lsp_slim_hover_document] = document
+        Thread.current[:ruby_lsp_slim_document] = document
+        super
+      end
+
+      def perform
         super
       ensure
-        Thread.current[:ruby_lsp_slim_hover_document] = nil
+        Thread.current[:ruby_lsp_slim_document] = nil
       end
     end
 
-    Requests::Hover.prepend(HoverRequestExtension)
+    [Requests::Hover, Requests::Completion, Requests::Definition, Requests::SignatureHelp].each do |request|
+      request.prepend(RequestDocumentExtension)
+    end
 
     class Addon < ::RubyLsp::Addon
       def activate(global_state, outgoing_queue)
@@ -57,7 +65,7 @@ module RubyLsp
       end
 
       def create_hover_listener(response_builder, _node_context, dispatcher)
-        return unless Thread.current[:ruby_lsp_slim_hover_document].is_a?(Document)
+        return unless Thread.current[:ruby_lsp_slim_document].is_a?(Document)
 
         Hover.new(response_builder, @global_state, dispatcher)
       end

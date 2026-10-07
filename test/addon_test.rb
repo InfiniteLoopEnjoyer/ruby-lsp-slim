@@ -19,7 +19,21 @@ class AddonTest < Minitest::Test
     - rows = fetch_rows
     div class=table_classes(:scroll)
       p.title = title_for(rows)
+      = f.number_field :volume
+      = form_with do |form|
+        = form.number_field :weight
   SLIM
+
+  FORM_BUILDER = <<~RUBY
+    module ActionView
+      module Helpers
+        class FormBuilder
+          # A number input for the attribute
+          def number_field(method, options = {}); end
+        end
+      end
+    end
+  RUBY
 
   def test_the_server_discovers_the_addon_through_the_gem
     with_server(load_addons: true) do
@@ -190,6 +204,61 @@ class AddonTest < Minitest::Test
     end
   end
 
+  def test_a_builder_named_local_the_template_only_declares_is_a_form_builder
+    with_slim_server do |server, uri|
+      server.process_message({
+        id: 1,
+        method: "textDocument/hover",
+        params: { textDocument: { uri: uri }, position: { line: 4, character: 8 } },
+      })
+      markdown = pop_result(server).response.contents.value
+
+      assert_includes markdown, "number_field(method, options = <default>)"
+      assert_includes markdown, "A number input for the attribute"
+      assert_includes markdown, "Guessed receiver: ActionView::Helpers::FormBuilder"
+    end
+  end
+
+  def test_a_block_parameter_named_like_a_builder_resolves_too
+    with_slim_server do |server, uri|
+      server.process_message({
+        id: 1,
+        method: "textDocument/definition",
+        params: { textDocument: { uri: uri }, position: { line: 6, character: 12 } },
+      })
+
+      assert_equal ["file:///fake/form_builder.rb"], pop_result(server).response.map(&:target_uri)
+    end
+  end
+
+  def test_simple_form_builder_wins_when_indexed
+    with_slim_server do |server, uri|
+      simple_form = "module SimpleForm\n  class FormBuilder < ActionView::Helpers::FormBuilder\n  end\nend\n"
+      server.global_state.index.index_single(URI::Generic.from_path(path: "/fake/simple_form.rb"), simple_form)
+      server.process_message({
+        id: 1,
+        method: "textDocument/hover",
+        params: { textDocument: { uri: uri }, position: { line: 4, character: 8 } },
+      })
+
+      assert_includes pop_result(server).response.contents.value, "Guessed receiver: SimpleForm::FormBuilder"
+    end
+  end
+
+  def test_builder_names_in_ruby_files_are_left_to_the_ruby_lsp
+    ruby_uri = URI::Generic.from_path(path: "/fake/app/views/table.rb")
+    with_server("f.number_field(:volume)\n", ruby_uri, stub_no_typechecker: true, load_addons: true) do |server, uri|
+      server.global_state.index.index_single(URI::Generic.from_path(path: "/fake/form_builder.rb"), FORM_BUILDER)
+      server.process_message({
+        id: 1,
+        method: "textDocument/hover",
+        params: { textDocument: { uri: uri }, position: { line: 0, character: 4 } },
+      })
+
+      assert_nil pop_result(server).response
+    end
+  end
+
   private
 
   def with_slim_server(&block)
@@ -202,6 +271,7 @@ class AddonTest < Minitest::Test
         end
       RUBY
       server.global_state.index.index_single(URI::Generic.from_path(path: "/fake/table_helper.rb"), helper)
+      server.global_state.index.index_single(URI::Generic.from_path(path: "/fake/form_builder.rb"), FORM_BUILDER)
       server.process_message({
         method: "textDocument/didOpen",
         # mutable, as a document arrives from JSON: the server applies edits to the source in place

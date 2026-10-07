@@ -41,8 +41,14 @@ A call without a receiver, such as `= icon(:lock)` or `div class=table_classes(:
 template, and the Ruby LSP cannot infer its receiver there (it sees `Object`). Go to definition offers every method of
 that name in the index, as it does in ERB; the add-on makes hover and completion do the same, so hovering a helper
 shows its signature, documentation and definition links, and typing a prefix offers the project's methods (locals,
-keywords and `Object`'s methods still come from the Ruby LSP). Calls with a receiver (`f.text_field`, `Model.find`)
-work as in any Ruby file. Nothing changes in `.rb` or `.erb` files.
+keywords and `Object`'s methods still come from the Ruby LSP). Calls with a receiver (`Model.find`, `@user.name`)
+work as in any Ruby file.
+
+A form builder is the other receiver a template is full of, and the Ruby LSP cannot type it: `f`, `form`, `builder`,
+`fields` or any `*_form`/`*_builder`/`*_fields` local — a block parameter, or a local the template only declares —
+is taken as `SimpleForm::FormBuilder` when that is in the index, `ActionView::Helpers::FormBuilder` otherwise, as a
+guessed receiver (hover says so), so `f.number_field` hovers, completes and jumps into Action View. Nothing changes in
+`.rb` or `.erb` files.
 
 ## Highlighting
 
