@@ -122,7 +122,7 @@ class AddonTest < Minitest::Test
       })
       items = pop_result(server).response
 
-      assert_equal 1, items.count { |item| item.label == "table_classes" }
+      assert_equal(1, items.count { |item| item.label == "table_classes" })
       assert_equal "table_classes", items.find { |item| item.label == "table_classes" }.text_edit.new_text
       assert_equal "TableHelper", items.find { |item| item.label == "table_classes" }.data[:owner_name]
     end
@@ -160,6 +160,33 @@ class AddonTest < Minitest::Test
       })
 
       assert_nil pop_result(server).response
+    end
+  end
+
+  def test_activation_registers_slim_documents_with_the_editor
+    with_server(load_addons: true) do |server, _uri|
+      queue = server.instance_variable_get(:@outgoing_queue)
+      messages = []
+      messages << server.pop_response until queue.empty?
+
+      registration = messages.find { |m| m.is_a?(RubyLsp::Request) && m.method == "client/registerCapability" }
+      refute_nil registration, "no client/registerCapability request was sent"
+      registrations = registration.params.registrations
+      by_method = registrations.to_h { |r| [r.method, r.register_options] }
+
+      ["textDocument/didOpen", "textDocument/didChange", "textDocument/definition", "textDocument/hover",
+       "textDocument/completion", "textDocument/semanticTokens", "textDocument/documentSymbol",].each do |method|
+        assert_includes by_method.keys, method
+      end
+      selector = RubyLsp::Slim::EditorRegistration::SELECTOR
+      assert(by_method.values.all? { |options| options[:documentSelector] == selector })
+      assert_equal RubyLsp::Constant::TextDocumentSyncKind::INCREMENTAL, by_method["textDocument/didChange"][:syncKind]
+      assert_includes by_method["textDocument/completion"][:triggerCharacters], "."
+      assert_includes by_method["textDocument/semanticTokens"][:legend].to_hash[:tokenTypes].map(&:to_s), "method"
+      assert registrations.map(&:id).uniq.length == registrations.length, "registration ids must be unique"
+
+      log = messages.find { |m| m.is_a?(RubyLsp::Notification) && m.method == "window/logMessage" }
+      assert_match(/ruby-lsp-slim #{ RubyLsp::Slim::VERSION }/, log.params.message)
     end
   end
 

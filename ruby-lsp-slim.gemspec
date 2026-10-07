@@ -9,12 +9,14 @@ Gem::Specification.new do |spec|
   spec.email = ["tayden007@hotmail.com"]
   spec.summary = "Ruby LSP add-on for Slim templates"
   spec.description = "Go to definition, hover, completion and semantic highlighting for the Ruby inside Slim " \
-    "templates, through the Ruby LSP."
+                     "templates, through the Ruby LSP."
   spec.homepage = "https://github.com/InfiniteLoopEnjoyer/ruby-lsp-slim"
   spec.license = "MIT"
   spec.metadata = {
     "source_code_uri" => spec.homepage,
     "bug_tracker_uri" => "#{ spec.homepage }/issues",
+    "changelog_uri" => "#{ spec.homepage }/blob/main/CHANGELOG.md",
+    "rubygems_mfa_required" => "true",
   }
   spec.required_ruby_version = ">= 3.1"
 

@@ -1,0 +1,42 @@
+AllCops:
+  TargetRubyVersion: 3.1
+  NewCops: enable
+  SuggestExtensions: false
+
+Style/Documentation:
+  Enabled: false
+Style/StringLiterals:
+  EnforcedStyle: double_quotes
+Layout/LineLength:
+  Max: 120
+Metrics:
+  Enabled: false
+Naming/PredicateMethod:
+  Enabled: false
+
+Layout/SpaceInsideStringInterpolation:
+  EnforcedStyle: space
+
+# The Ruby LSP's own style: trailing commas on multi-line literals and calls, hashes indented from the line
+Style/TrailingCommaInHashLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+Style/TrailingCommaInArrayLiteral:
+  EnforcedStyleForMultiline: consistent_comma
+Style/TrailingCommaInArguments:
+  EnforcedStyleForMultiline: consistent_comma
+Layout/FirstHashElementIndentation:
+  EnforcedStyle: consistent
+Layout/FirstArrayElementIndentation:
+  EnforcedStyle: consistent
+Lint/AmbiguousBlockAssociation:
+  AllowedMethods: [assert, assert_equal, refute, refute_equal, assert_includes, refute_includes]
+
+# House style: bracketed string arrays and slash regexes, even with inner slashes
+Style/WordArray:
+  EnforcedStyle: brackets
+Style/RegexpLiteral:
+  EnforcedStyle: slashes
+  AllowInnerSlashes: true
+Naming/FileName:
+  Exclude:
+    - lib/ruby-lsp-slim.rb # the gem's entry point is named after the gem

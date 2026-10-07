@@ -14,7 +14,8 @@ class ScannerTest < Minitest::Test
     assert_equal source.length, scanner.ruby.length
     assert_equal source.length, scanner.host_language.length
     source.each_char.with_index do |char, index|
-      ruby, host = scanner.ruby[index], scanner.host_language[index]
+      ruby = scanner.ruby[index]
+      host = scanner.host_language[index]
       if char == "\n"
         assert_equal [char, char], [ruby, host]
       else
@@ -112,6 +113,35 @@ class ScannerTest < Minitest::Test
     )
 
     assert_equal "  1 +\n", document.parse_result.source.source
+  end
+
+  def test_windows_line_endings_stay_in_place
+    source = "- a = 1\r\ndiv class=b(:c)\r\n  | text \#{ d }\r\n"
+    scanner = RubyLsp::Slim::Scanner.new(source).scan
+
+    assert_equal source.length, scanner.ruby.length
+    assert_equal(["a = 1", "b(:c)", "d"], scanner.ruby.lines.map { |line| line.strip.squeeze(" ") })
+    assert_equal(["\r\n", "\r\n", "\r\n"], scanner.ruby.lines.map { |line| line[-2..] })
+  end
+
+  def test_an_unclosed_interpolation_runs_to_the_end_of_its_line
+    source = "p Hello \#{ user.name\np Next\n"
+    scanner = RubyLsp::Slim::Scanner.new(source).scan
+
+    assert_equal ["user.name", ""], scanner.ruby.lines.map(&:strip)
+  end
+
+  def test_an_empty_source
+    scanner = RubyLsp::Slim::Scanner.new("").scan
+
+    assert_equal "", scanner.ruby
+    assert_equal "", scanner.host_language
+  end
+
+  def test_tabs_indent_blocks_too
+    source = "/ comment\n\tstill comment\n- code\n"
+
+    assert_equal ["", "", "code"], ruby_lines(source)
   end
 
   private

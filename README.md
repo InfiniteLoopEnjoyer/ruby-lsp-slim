@@ -15,29 +15,18 @@ group :development do
 end
 ```
 
-The Ruby LSP discovers the add-on on its next start (restart the server from your editor).
+Restart the Ruby LSP from your editor. On activation the add-on registers Slim documents with the editor itself
+(`client/registerCapability`, for text synchronisation and every feature the Ruby LSP offers ERB), so the stock Ruby
+LSP extension starts sending `.slim` files to the server — no settings, no patched extension. The registration matches
+by the `slim` language id when the editor has one, and by the `**/*.slim` path otherwise, so it works even on files
+the editor shows as plain text.
 
-### Tell your editor to send Slim files to the server
+**VS Code** — for Slim syntax highlighting, comment toggling and indentation, install the grammar-only extension in
+[vscode/](vscode/) (**Developer: Install Extension from Location...**, or `npx @vscode/vsce package` and install the
+`.vsix`), or any extension that contributes the `slim` language.
 
-This is the one manual step, and it is needed because of the client, not the server: the Ruby LSP extensions only
-hand `ruby` and `erb` documents to the language server, so a Slim file never reaches it. Have the editor present
-`.slim` files as ERB and the add-on takes over from there, keyed on the `.slim` extension.
-
-**VS Code** — in `.vscode/settings.json` (or your user settings):
-
-```json
-{
-  "files.associations": {
-    "*.slim": "erb"
-  }
-}
-```
-
-The trade-off: the file gets VS Code's ERB grammar, so there is no Slim-aware syntax highlighting (the Ruby LSP's
-semantic highlighting still colours the Ruby parts). See [Highlighting](#highlighting) for the way out.
-
-**Other editors** — any client works as long as it opens `.slim` files with the language id `erb` (or `eruby`), or
-with any language id at all if the client can be told to send `.slim` files: the add-on keys on the extension.
+**Other editors** — any client that honours dynamic registration works. One that does not can still be told to open
+`.slim` files as `erb` (or `eruby`): the add-on keys on the file extension, not the language id.
 
 ## What you get
 
@@ -57,21 +46,8 @@ work as in any Ruby file. Nothing changes in `.rb` or `.erb` files.
 
 ## Highlighting
 
-With the `files.associations` route the editor has no Slim grammar, because the language id decides both the grammar
-and what the Ruby LSP extension sends to the server. The fix is to send `slim` documents as such:
-
-1. Install the grammar-only extension in [vscode/](vscode/) (**Developer: Install Extension from Location...**, or
-   `npx @vscode/vsce package` and install the `.vsix`). It contributes the `slim` language with the MIT
-   [ruby-slim.tmbundle](https://github.com/slim-template/ruby-slim.tmbundle) grammar.
-2. Have the Ruby LSP extension send `slim` documents. Its language list is a constant,
-   `SUPPORTED_LANGUAGE_IDS = ["ruby", "erb"]` in `vscode/src/common.ts`, used only to build the client's
-   `documentSelector` in `collectClientOptions` (`vscode/src/client.ts`). Upstream, a setting such as
-   `rubyLsp.additionalLanguageIds` appended there would do it; until then, the installed extension can be patched in
-   place — in `out/extension.js` of `shopify.ruby-lsp-*`, change `["ruby","erb"]` to `["ruby","erb","slim"]` (an
-   extension update undoes it).
-3. Remove the `files.associations` entry and reload the window.
-
-The server side needs nothing: the add-on keys on the `.slim` extension, whatever language id arrives.
+Two layers: the grammar extension colours Slim itself (tags, attributes, text, filters), and the Ruby LSP's semantic
+tokens colour the Ruby inside it, exactly as in a Ruby file.
 
 ## How it works
 
@@ -83,14 +59,22 @@ id the editor sent.
 
 Slim omits `end`, so the Ruby handed to Prism is never complete; Prism's error-tolerant parse carries it. Blocks
 nest wrongly past a dedent, but every node stays in place, which is what navigation needs. The Ruby LSP does not
-compute diagnostics or formatting for ERB-derived documents, so none of that shows up in the editor.
+compute diagnostics or formatting for ERB-derived documents, so none of that shows up in the editor, and requests at
+host-language positions stay with the server instead of being delegated to the editor's HTML service as ERB's are.
+
+## See also
+
+[afomera/ruby-lsp-slim](https://github.com/afomera/ruby-lsp-slim) takes the same approach on the server and runs a
+second, dedicated Ruby LSP process for Slim files on the editor side.
 
 ## Development
 
 ```sh
 bundle install
-bundle exec rake
+bundle exec rake   # tests, then RuboCop
 ```
+
+`examples/` holds a helper and a template to try things on by hand.
 
 ## License
 

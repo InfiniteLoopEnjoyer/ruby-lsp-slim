@@ -4,4 +4,9 @@ require "minitest/test_task"
 
 Minitest::TestTask.create
 
-task default: :test
+desc "Lint with RuboCop"
+task :rubocop do
+  sh "bundle exec rubocop"
+end
+
+task default: %i[test rubocop]

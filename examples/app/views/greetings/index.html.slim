@@ -1,0 +1,17 @@
+/ One card per person; every Ruby fragment here is reachable by the Ruby LSP through the add-on
+- people = ["Ada", "Grace"]
+- formal = params[:formal].present?
+
+section.greetings class=greeting_classes(:list)
+  h1 = salutation("everyone", formal: formal)
+
+  - people.each do |name|
+    article class=greeting_classes(:card) id="person-#{ name.downcase }"
+      p = salutation(name,
+                     formal: formal)
+      | Say hello to #{ name }
+      a(href="/people/#{ name.downcase }"
+        class="link") = name
+      ruby:
+        initials = name[0]
+      span.initials = initials

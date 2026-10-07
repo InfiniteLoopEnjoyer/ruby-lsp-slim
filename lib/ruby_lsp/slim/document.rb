@@ -20,7 +20,7 @@ module RubyLsp
           scanner.scan
         rescue StandardError => e
           # A scanner bug must not take the document down with it: fall back to a template with no Ruby in it
-          $stderr.puts("ruby-lsp-slim could not scan #{ @uri }: #{ e.class }: #{ e.message }")
+          warn("ruby-lsp-slim could not scan #{ @uri }: #{ e.class }: #{ e.message }")
           scanner = Scanner.new(@source.gsub(/[^\r\n]/, " ")).scan
         end
         @host_language_source = scanner.host_language

@@ -9,7 +9,10 @@ module RubyLsp
     class Scanner
       attr_reader :ruby, :host_language
 
-      ENGINES = ["asciidoc", "markdown", "textile", "rdoc", "coffee", "sass", "scss", "javascript", "css", "ruby"]
+      # Slim::Embedded's engines, the `name:` filters whose block is not Slim
+      ENGINES = [
+        "asciidoc", "markdown", "textile", "rdoc", "coffee", "sass", "scss", "javascript", "css", "ruby",
+      ].freeze
       EMBEDDED_RE = /\A(#{ Regexp.union(ENGINES) })(?:\s*(?:(.*)))?:(\s*)/
       # A tag name, a `*splat` tag or a `.class`/`#id` shortcut; only the name is consumed (group 1)
       TAG_RE = /\A(?:[.#]|\*(?=\S)|(\p{Word}(?:\p{Word}|:|-)*\p{Word}|\p{Word}+))/
@@ -18,7 +21,7 @@ module RubyLsp
       QUOTED_ATTR_RE = /\A\s*(#{ ATTR_NAME })\s*=(=?)\s*("|')/
       CODE_ATTR_RE = /\A\s*(#{ ATTR_NAME })\s*=(=?)\s*/
       SPLAT_RE = /\A\s*\*(?=\S)/
-      DELIMS = { "(" => ")", "[" => "]", "{" => "}" }
+      DELIMS = { "(" => ")", "[" => "]", "{" => "}" }.freeze
 
       def initialize(source)
         @source = source
@@ -39,7 +42,7 @@ module RubyLsp
         end
 
         @source.each_char.with_index do |char, index|
-          if char == "\n" || char == "\r"
+          if ["\n", "\r"].include?(char)
             @ruby << char
             @host_language << char
           elsif @mask[index]
@@ -82,7 +85,7 @@ module RubyLsp
 
         content = line[indent..]
         case content
-        when /\A\/\[/ # conditional comment: its children are ordinary Slim
+        when /\A\/\[/, /\Adoctype\b/ # conditional comment (its children are ordinary Slim), doctype
           nil
         when /\A\// # HTML or Slim comment
           @block = { kind: :host, indent: indent }
@@ -94,11 +97,9 @@ module RubyLsp
         when /\A-/ # control code
           ruby_line(line, offset, indent + 1)
         when /\A=(=?)([<>]*)/ # output code
-          ruby_line(line, offset, indent + $&.length)
+          ruby_line(line, offset, indent + ::Regexp.last_match(0).length)
         when EMBEDDED_RE
-          @block = { kind: $1 == "ruby" ? :ruby : :host, indent: indent }
-        when /\Adoctype\b/
-          nil
+          @block = { kind: ::Regexp.last_match(1) == "ruby" ? :ruby : :host, indent: indent }
         else
           scan_tag(line, offset, indent)
         end
@@ -143,14 +144,12 @@ module RubyLsp
 
         loop do
           rest = line[col..]
-          if (match = SPLAT_RE.match(rest))
-            col = scan_ruby_value(line, offset, col + match[0].length, state) or return
-          elsif (match = QUOTED_ATTR_RE.match(rest))
+          if (match = QUOTED_ATTR_RE.match(rest))
             state[:quote] = match[3]
             state[:braces] = 0
             state[:interpolating] = false
             col = scan_quoted_value(line, offset, col + match[0].length, state) or return
-          elsif (match = CODE_ATTR_RE.match(rest))
+          elsif (match = SPLAT_RE.match(rest) || CODE_ATTR_RE.match(rest)) # `*splat` or `name=ruby`
             col = scan_ruby_value(line, offset, col + match[0].length, state) or return
           elsif state[:delim].nil?
             break
@@ -217,7 +216,7 @@ module RubyLsp
           if char == "{"
             state[:braces] += 1
             if state[:braces] == 1
-              state[:interpolating] = col > 0 && line[col - 1] == "#"
+              state[:interpolating] = col.positive? && line[col - 1] == "#"
               col += 1
               next
             end
@@ -241,9 +240,9 @@ module RubyLsp
         rest = line[col..]
         case rest
         when /\A\s*:\s*/ # block expansion: another tag on the same line
-          scan_tag(line, offset, col + $&.length)
+          scan_tag(line, offset, col + ::Regexp.last_match(0).length)
         when /\A\s*=(=?)(['<>]*)/ # output code
-          ruby_line(line, offset, col + $&.length)
+          ruby_line(line, offset, col + ::Regexp.last_match(0).length)
         when /\A\s*\/\s*/, /\A\s*\z/ # closed tag, no content
           nil
         else # inline text
@@ -255,10 +254,10 @@ module RubyLsp
       def mark_interpolations(line, offset, col)
         while (start = line.index('#{', col))
           col = start + 2
-          next if start > 0 && line[start - 1] == "\\"
+          next if start.positive? && line[start - 1] == "\\"
 
           depth = 1
-          while col < line.length && depth > 0
+          while col < line.length && depth.positive?
             depth += 1 if line[col] == "{"
             depth -= 1 if line[col] == "}"
             col += 1

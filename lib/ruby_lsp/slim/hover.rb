@@ -22,7 +22,7 @@ module RubyLsp
         message = node.message
         return unless message
 
-        entries = @index[message]&.select { |entry| entry.is_a?(RubyIndexer::Entry::Member) }
+        entries = @index[message]&.grep(RubyIndexer::Entry::Member)
         return if entries.nil? || entries.empty?
 
         first = entries.first
