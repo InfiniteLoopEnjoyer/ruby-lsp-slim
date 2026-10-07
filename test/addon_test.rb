@@ -148,6 +148,21 @@ class AddonTest < Minitest::Test
     end
   end
 
+  def test_requests_at_host_positions_are_not_delegated_to_the_html_service
+    with_slim_server do |server, uri|
+      # The VS Code client advertises request delegation; for ERB that sends host-language positions to the editor's
+      # HTML service, which cannot serve a Slim file
+      server.global_state.client_capabilities.instance_variable_set(:@supports_request_delegation, true)
+      server.process_message({
+        id: 1,
+        method: "textDocument/hover",
+        params: { textDocument: { uri: uri }, position: { line: 2, character: 1 } },
+      })
+
+      assert_nil pop_result(server).response
+    end
+  end
+
   private
 
   def with_slim_server(&block)

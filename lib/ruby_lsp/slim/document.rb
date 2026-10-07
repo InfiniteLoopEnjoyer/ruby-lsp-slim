@@ -28,6 +28,14 @@ module RubyLsp
         @code_units_cache = @parse_result.code_units_cache(@encoding)
         true
       end
+
+      # The Ruby LSP delegates requests at ERB host-language positions to the editor's HTML service (a virtual
+      # `embedded-content://html/...` document). Slim's host language is not HTML, and the editor cannot resolve that
+      # document for a Slim file, so every request here stays with the Ruby LSP.
+      # @override
+      def inside_host_language?(_char_position)
+        false
+      end
     end
   end
 end
