@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Indexing: FormBuilder's generated field helpers (`text_field`, `number_field`, `textarea`...) get index
+  entries, read from Action View's `field_helpers` list, so they hover, complete and resolve.
 - Form builders: a receiver named `f`, `form`, `builder`, `fields` or `*_form`/`*_builder`/`*_fields` in a template
   is a guessed `ActionView::Helpers::FormBuilder` (`SimpleForm::FormBuilder` when indexed), so its methods hover,
   complete and resolve.

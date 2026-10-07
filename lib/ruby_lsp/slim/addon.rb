@@ -8,6 +8,7 @@ require_relative "hover"
 require_relative "completion"
 require_relative "editor_registration"
 require_relative "template_receiver"
+require_relative "form_builder_fields"
 
 module RubyLsp
   module Slim

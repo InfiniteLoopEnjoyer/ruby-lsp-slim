@@ -24,12 +24,17 @@ class AddonTest < Minitest::Test
         = form.number_field :weight
   SLIM
 
+  # As Action View writes it: most field helpers come from the list, a few are defined by hand
   FORM_BUILDER = <<~RUBY
     module ActionView
       module Helpers
         class FormBuilder
-          # A number input for the attribute
-          def number_field(method, options = {}); end
+          class_attribute :field_helpers, default: [:fields_for, :label, :text_field, :hidden_field, :number_field,
+                                                    :textarea]
+          alias_method :text_area, :textarea
+
+          # A hidden input for the attribute
+          def hidden_field(method, options = {}); end
         end
       end
     end
@@ -214,7 +219,7 @@ class AddonTest < Minitest::Test
       markdown = pop_result(server).response.contents.value
 
       assert_includes markdown, "number_field(method, options = <default>)"
-      assert_includes markdown, "A number input for the attribute"
+      assert_includes markdown, "Field helper that Action View generates"
       assert_includes markdown, "Guessed receiver: ActionView::Helpers::FormBuilder"
     end
   end
@@ -257,6 +262,44 @@ class AddonTest < Minitest::Test
 
       assert_nil pop_result(server).response
     end
+  end
+
+  def test_generated_field_helpers_are_indexed_once_each
+    index = RubyLsp::GlobalState.new.index
+    index.index_single(URI::Generic.from_path(path: "/fake/form_builder.rb"), FORM_BUILDER)
+    builder = "ActionView::Helpers::FormBuilder"
+
+    ["number_field", "text_field"].each do |helper|
+      assert_equal ["(method, options = <default>)"], index.resolve_method(helper, builder).map(&:decorated_parameters)
+    end
+    assert_equal 1, index.resolve_method("hidden_field", builder).length, "hand-written helpers are not duplicated"
+    assert_nil index.resolve_method("label", builder), "helpers Action View defines by hand are left to its own defs"
+    assert_equal 1, index.resolve_method("text_area", builder).length, "the alias of a generated helper resolves"
+  end
+
+  def test_the_older_field_helpers_assignment_is_read_too
+    source = <<~RUBY
+      module ActionView
+        module Helpers
+          class FormBuilder
+            self.field_helpers = [:text_field, :label]
+          end
+        end
+      end
+    RUBY
+    index = RubyLsp::GlobalState.new.index
+    index.index_single(URI::Generic.from_path(path: "/fake/form_builder.rb"), source)
+
+    assert_equal 1, index.resolve_method("text_field", "ActionView::Helpers::FormBuilder").length
+    assert_nil index.resolve_method("label", "ActionView::Helpers::FormBuilder")
+  end
+
+  def test_a_field_helpers_list_outside_the_form_builder_is_ignored
+    index = RubyLsp::GlobalState.new.index
+    source = "class Other\n  class_attribute :field_helpers, default: [:text_field]\nend\n"
+    index.index_single(URI::Generic.from_path(path: "/fake/other.rb"), source)
+
+    assert_nil index.resolve_method("text_field", "Other")
   end
 
   private

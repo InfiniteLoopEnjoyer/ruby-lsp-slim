@@ -47,8 +47,11 @@ work as in any Ruby file.
 A form builder is the other receiver a template is full of, and the Ruby LSP cannot type it: `f`, `form`, `builder`,
 `fields` or any `*_form`/`*_builder`/`*_fields` local — a block parameter, or a local the template only declares —
 is taken as `SimpleForm::FormBuilder` when that is in the index, `ActionView::Helpers::FormBuilder` otherwise, as a
-guessed receiver (hover says so), so `f.number_field` hovers, completes and jumps into Action View. Nothing changes in
-`.rb` or `.erb` files.
+guessed receiver (hover says so), so `f.number_field` hovers, completes and jumps into Action View.
+
+Action View generates most of those field helpers at load time (`text_field`, `number_field`, `textarea`...), so the
+indexer has no definition for them; while Action View is indexed the add-on reads the `field_helpers` list and adds
+an entry per generated helper. That part helps `.rb` and `.erb` files too; everything else leaves them alone.
 
 ## Highlighting
 
