@@ -9,9 +9,11 @@ module RubyLsp
       BUILDER_NAME = /\A(?:f|ff|form|builder|fields|\w+_(?:form|builder|fields))\z/
       BUILDER_CLASSES = ["SimpleForm::FormBuilder", "ActionView::Helpers::FormBuilder"].freeze
 
+      # The builder comes first: the Ruby LSP's own guess from the variable's name (`f` → `F`) can land on an
+      # unrelated constant — `ARGF` in a full index — and a template's `f` is a form builder before anything else.
       module TypeInferrerExtension
         def infer_receiver_type(node_context)
-          super || TemplateReceiver.form_builder(node_context, @index)
+          TemplateReceiver.form_builder(node_context, @index) || super
         end
       end
 

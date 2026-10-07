@@ -302,6 +302,20 @@ class AddonTest < Minitest::Test
     assert_nil index.resolve_method("text_field", "Other")
   end
 
+  def test_the_builder_outranks_a_constant_guessed_from_the_variable_name
+    with_slim_server do |server, uri|
+      # With a full index the Ruby LSP's name guess for `f` finds some constant (ARGF, here F) and stops there
+      server.global_state.index.index_single(URI::Generic.from_path(path: "/fake/f.rb"), "class F\nend\n")
+      server.process_message({
+        id: 1,
+        method: "textDocument/hover",
+        params: { textDocument: { uri: uri }, position: { line: 4, character: 8 } },
+      })
+
+      assert_includes pop_result(server).response.contents.value, "Guessed receiver: ActionView::Helpers::FormBuilder"
+    end
+  end
+
   private
 
   def with_slim_server(&block)
